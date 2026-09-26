@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS measuring_device (
   accuracy_level TEXT,
   owner_dept TEXT,
   calibration_cycle_days TEXT,
-  status TEXT
+  status TEXT,
+  next_due_date TEXT
 );
 
 CREATE TABLE IF NOT EXISTS calibration_plan (

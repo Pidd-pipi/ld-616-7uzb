@@ -12,7 +12,35 @@ cp .env.example .env && docker compose up -d
 
 后端健康检查：<http://localhost:21116/health>
 
-后端健康检查：<http://localhost:21116/health>
+```bash
+# 创建计划（同设备 + 未完结计划 + 同日期会被 409 拒绝，并返回冲突计划详情）
+curl -X POST http://localhost:21116/api/calibration-plan \
+  -H 'Content-Type: application/json' \
+  -d '{"device_id":1,"planned_date":"2026-10-01"}'
+
+# 改期（同样做冲突检查，CLOSED/CANCELLED 计划不可改期）
+curl -X POST http://localhost:21116/api/calibration-plan/1/reschedule \
+  -H 'Content-Type: application/json' \
+  -d '{"planned_date":"2026-11-01"}'
+
+# 派发机构（机构停用或资质范围不覆盖设备类型会被 409 拒绝；成功后自动生成待处理预警）
+curl -X POST http://localhost:21116/api/calibration-plan/1/assign \
+  -H 'Content-Type: application/json' \
+  -d '{"vendor_id":1}'
+
+# 登记证书（只接受 ASSIGNED 计划；PASS/LIMITED_PASS 时更新设备状态与下次到期日并关闭预警）
+curl -X POST http://localhost:21116/api/calibration-certificate \
+  -H 'Content-Type: application/json' \
+  -d '{"plan_id":1,"certificate_no":"CERT-2026-1003","result_status":"PASS","valid_until":"2027-10-01"}'
+```
+
+## 计划派发与证书收口约束
+
+- **计划创建/改期冲突**：同一台设备已存在未完结（非 CLOSED/CANCELLED）计划且日期相同，返回 `409 PLAN_DATE_CONFLICT`，响应 `details.conflict_plan` 指明冲突的计划。
+- **机构指派**：仅 `PLANNED` 状态计划可派发；机构 `DISABLED` 返回 `409 VENDOR_DISABLED`；机构 `service_scope` 不覆盖设备 `device_type` 返回 `409 VENDOR_SCOPE_MISMATCH`。
+- **派发成功**：计划置为 `ASSIGNED`，自动登记一条 `PENDING` 超期预警。
+- **证书登记**：仅接受 `ASSIGNED` 状态计划，否则 `409 PLAN_NOT_ASSIGNED`；登记后计划置为 `CERT_UPLOADED`。
+- **证书通过**（`PASS`/`LIMITED_PASS`）：设备状态置为 `VALID`、`next_due_date` 更新为证书 `valid_until`，对应待处理预警关闭并记录 `handled_by`/`handled_at`；其他结果只登记证书，不动设备与预警。
 
 
 ## 本地开发方式
@@ -54,9 +82,11 @@ backend/src/routes, controllers, services, models, repositories, middlewares, co
 
 ## 枚举/常量出现位置清单
 
-- DeviceCalibrationStatus: constants/DeviceCalibrationStatus、types/DeviceCalibrationStatus、constructors、logTemplates、errorMessages、筛选器、展示组件/控制器均有引用。
-- PlanStatus: constants/PlanStatus、types/PlanStatus、constructors、logTemplates、errorMessages、筛选器、展示组件/控制器均有引用。
-- CertificateResult: constants/CertificateResult、types/CertificateResult、constructors、logTemplates、errorMessages、筛选器、展示组件/控制器均有引用。
+- DeviceCalibrationStatus: constants/DeviceCalibrationStatus、models/MeasuringDevice、constructors/MeasuringDeviceDtoFactory、services/CalibrationCertificateService、seed、logTemplates、errorMessages 均有引用。
+- PlanStatus: constants/PlanStatus（含 isOpenPlanStatus）、models/CalibrationPlan、repositories/CalibrationPlanRepository、services/CalibrationPlanService、services/CalibrationCertificateService、constructors、seed、logTemplates、errorMessages 均有引用。
+- CertificateResult: constants/CertificateResult（含 isCertificatePass）、models/CalibrationCertificate、validators/CalibrationCertificateValidator、services/CalibrationCertificateService、constructors、seed 均有引用。
+- CalibrationVendorStatus: constants/CalibrationVendorStatus（含 isVendorActive）、models/CalibrationVendor、services/CalibrationVendorService、services/CalibrationPlanService、constructors、seed、errorMessages 均有引用。
+- OverdueAlertStatus / OverdueAlertLevel: constants/OverdueAlertStatus、constants/OverdueAlertLevel、models/OverdueAlert、repositories/OverdueAlertRepository、services/OverdueAlertService、services/CalibrationPlanService、constructors、seed 均有引用。
 
 ## 为什么会牵一发动全身
 

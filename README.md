@@ -52,11 +52,20 @@ backend/src/routes, controllers, services, models, repositories, middlewares, co
 - 数据库使用命名卷，避免绑定中文路径。
 - 常见问题：端口占用时修改 `.env` 中端口后重启；需要重置数据时执行 `docker compose down -v`。
 
+## 业务约束（计划派发与证书收口）
+
+- `POST /api/calibration-plan` 创建计划、`POST /api/calibration-plan/{id}/reschedule` 改期：同一台设备已存在**未完结**（非 CLOSED / CANCELLED）且计划日期相同的计划时，返回 `409 PLAN_DATE_CONFLICT`，响应 `details.conflictPlan` 指明冲突的是哪条计划。
+- `POST /api/calibration-plan/{id}/assign` 派发机构：机构 `vendor_status` 为 `DISABLED` 时返回 `409 VENDOR_DISABLED`；机构 `service_scope` 不覆盖设备 `device_type` 时返回 `409 VENDOR_SCOPE_MISMATCH`。派发成功后计划置为 `ASSIGNED`，并自动登记一条 `PENDING` 状态的待处理预警。
+- `POST /api/calibration-certificate` 证书登记：只接受状态为 `ASSIGNED` 的计划，否则返回 `409 PLAN_NOT_ASSIGNED`；登记后计划置为 `CERT_UPLOADED`。
+- 证书结果为 `PASS` / `LIMITED_PASS` 时：设备状态更新为 `VALID`、`next_due_date` 更新为证书 `valid_until`，同时关闭该计划对应的待处理预警，记录 `handled_by`（操作人）和 `handled_at`（处理时间）。
+
 ## 枚举/常量出现位置清单
 
 - DeviceCalibrationStatus: constants/DeviceCalibrationStatus、types/DeviceCalibrationStatus、constructors、logTemplates、errorMessages、筛选器、展示组件/控制器均有引用。
 - PlanStatus: constants/PlanStatus、types/PlanStatus、constructors、logTemplates、errorMessages、筛选器、展示组件/控制器均有引用。
-- CertificateResult: constants/CertificateResult、types/CertificateResult、constructors、logTemplates、errorMessages、筛选器、展示组件/控制器均有引用。
+- CertificateResult: constants/CertificateResult（含 PASSING_RESULTS / isPassingResult）、types/CertificateResult、constructors、logTemplates、errorMessages、筛选器、展示组件/控制器均有引用。
+- AlertStatus: constants/AlertStatus、models/OverdueAlert、constructors/OverdueAlertDtoFactory、services/OverdueAlertService 均有引用。
+- VendorStatus: constants/VendorStatus、models/CalibrationVendor、constructors/CalibrationVendorDtoFactory、services/CalibrationPlanService 均有引用。
 
 ## 为什么会牵一发动全身
 

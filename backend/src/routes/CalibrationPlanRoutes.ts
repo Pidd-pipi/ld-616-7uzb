@@ -1,1 +1,9 @@
-import { Router } from "express"; import { calibrationPlanController } from "../controllers/CalibrationPlanController"; const router = Router(); router.get("/", calibrationPlanController.list); router.post("/", calibrationPlanController.create); export default router;
+import { Router } from "express";
+import { calibrationPlanController } from "../controllers/CalibrationPlanController";
+
+const router = Router();
+router.get("/", calibrationPlanController.list);
+router.post("/", calibrationPlanController.create);
+router.post("/:id/reschedule", calibrationPlanController.reschedule);
+router.post("/:id/assign", calibrationPlanController.assign);
+export default router;

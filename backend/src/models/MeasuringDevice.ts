@@ -1,1 +1,13 @@
-export interface MeasuringDevice { id: number; device_code: string; name: string; device_type: string; accuracy_level: string; owner_dept: string; calibration_cycle_days: number; status: string }
+import type { DeviceCalibrationStatus } from "../constants/DeviceCalibrationStatus";
+
+export interface MeasuringDevice {
+  id: number;
+  device_code: string;
+  name: string;
+  device_type: string;
+  accuracy_level: string;
+  owner_dept: string;
+  calibration_cycle_days: number;
+  status: DeviceCalibrationStatus;
+  next_due_date: string | null;
+}

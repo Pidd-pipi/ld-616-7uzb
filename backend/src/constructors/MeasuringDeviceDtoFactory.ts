@@ -1,1 +1,14 @@
-export const createMeasuringDeviceDto = (overrides = {}) => ({ id: 1, device_code: "device code 1", name: "name 1", device_type: "DUE_SOON", accuracy_level: "LOW", owner_dept: "owner dept 1", calibration_cycle_days: "calibration cycle days 1", status: "DUE_SOON", ...overrides });
+import type { MeasuringDevice } from "../models/MeasuringDevice";
+
+export const createMeasuringDeviceDto = (overrides: Partial<MeasuringDevice> = {}): MeasuringDevice => ({
+  id: 0,
+  device_code: "",
+  name: "",
+  device_type: "",
+  accuracy_level: "",
+  owner_dept: "",
+  calibration_cycle_days: 365,
+  status: "VALID",
+  next_due_date: null,
+  ...overrides
+});
